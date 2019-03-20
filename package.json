@@ -1,0 +1,26 @@
+{
+  "name": "network-incentivisation-contract",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "truffle-hdwallet-provider": "^1.0.5"
+  },
+  "devDependencies": {
+    "eslint": "^5.15.3",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.16.0",
+    "nodemon": "^1.18.10"
+  },
+  "scripts": {
+    "test": "truffle test",
+    "lint": "eslint . --ext .js",
+    "lint-watch": "nodemon --exec 'npm run lint'",
+    "validate": "npm test && npm run lint"
+  },
+  "author": "",
+  "license": "ISC"
+}

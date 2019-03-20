@@ -1,3 +1,4 @@
+const HDWalletProvider = require('truffle-hdwallet-provider');
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -76,12 +77,10 @@ module.exports = {
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
     goerli: {
-      provider: () => {
-        return new HDWalletProvider(process.env.MNEMONIC, 'https://goerli.infura.io/v3/' + process.env.INFURA_API_KEY)
-      },
-        network_id: '5', // eslint-disable-line camelcase
-        gas: 4465030,
-        gasPrice: 10000000000,
+      provider: () => new HDWalletProvider(process.env.MNEMONIC, `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`),
+      network_id: '5',
+      gas: 4465030,
+      gasPrice: 10000000000,
     },
   },
 
@@ -102,6 +101,6 @@ module.exports = {
       //  },
       //  evmVersion: "byzantium"
       // }
-    }
-  }
-}
+    },
+  },
+};
