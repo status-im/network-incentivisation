@@ -45,6 +45,36 @@ contract('Nodes', async (accounts) => {
     });
   });
 
+  describe('deleteNode', async () => {
+    describe('called by the owner', async () => {
+      beforeEach(async () => {
+        await instance.addNode(node1);
+        await instance.addNode(node2);
+        await instance.deleteNode(node1);
+      });
+
+      it('removes the first node', async () => {
+        const actualNode2 = await instance.nodes(0);
+        assert.equal(actualNode2, node2);
+      });
+
+      it('sets the count', async () => {
+        const actualNodeCount = await instance.nodeCount();
+        assert.equal(1, actualNodeCount);
+      });
+    });
+    describe('called by someone else', async () => {
+      it('throws an exception', async () => {
+        try {
+          await instance.deleteNode(node1, { from: accounts[1] });
+        } catch (error) {
+          return;
+        }
+        assert.fail('it should throw an exception');
+      });
+    });
+  });
+
   describe('deleteAll', async () => {
     beforeEach(async () => {
       await instance.addNode(node1);
