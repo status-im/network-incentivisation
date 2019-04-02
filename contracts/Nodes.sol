@@ -3,6 +3,7 @@ pragma solidity >=0.4.21 <0.6.0;
 contract Nodes
 {
   address owner;
+  bool allowRegistration;
   string[] public nodes;
   mapping(string => uint) nodeIndex;
 
@@ -15,6 +16,7 @@ contract Nodes
   public
   {
     owner = msg.sender;
+    allowRegistration = false;
   }
 
   function nodeCount()
@@ -28,8 +30,8 @@ contract Nodes
 
   function addNode(string memory _node)
   public
-  onlyOwner
   {
+    require(allowRegistration || msg.sender == owner);
     nodeIndex[_node] = nodes.length;
     nodes.push(_node);
   }
@@ -47,6 +49,13 @@ contract Nodes
   onlyOwner
   {
     delete nodes;
+  }
+
+  function toggleRegistration(bool value)
+  public
+  onlyOwner
+  {
+    allowRegistration = value;
   }
 
   function _deleteNode(uint index) internal {

@@ -9,21 +9,23 @@ contract('Nodes', async (accounts) => {
   beforeEach(async () => {
     instance = await Nodes.deployed();
     await instance.deleteAll();
+    await instance.toggleRegistration(false);
   });
 
   describe('addNode', async () => {
-    describe('called by the owner', async () => {
+    describe('registering is enabled', async () => {
       beforeEach(async () => {
+        await instance.toggleRegistration(true);
         await instance.addNode(node1);
-        await instance.addNode(node2);
+        await instance.addNode(node2, { from: accounts[1] });
       });
 
-      it('adds the first node', async () => {
+      it('adds the first node from the owner', async () => {
         const actualNode1 = await instance.nodes(0);
         assert.equal(actualNode1, node1);
       });
 
-      it('adds the second node', async () => {
+      it('adds the second node from someone else', async () => {
         const actualNode2 = await instance.nodes(1);
         assert.equal(actualNode2, node2);
       });
@@ -33,14 +35,37 @@ contract('Nodes', async (accounts) => {
         assert.equal(2, actualNodeCount);
       });
     });
-    describe('called by someone else', async () => {
-      it('throws an exception', async () => {
-        try {
-          await instance.addNode(node1, { from: accounts[1] });
-        } catch (error) {
-          return;
-        }
-        assert.fail('it should throw an exception');
+    describe('registering is disabled', async () => {
+      describe('called by the owner', async () => {
+        beforeEach(async () => {
+          await instance.addNode(node1);
+          await instance.addNode(node2);
+        });
+
+        it('adds the first node', async () => {
+          const actualNode1 = await instance.nodes(0);
+          assert.equal(actualNode1, node1);
+        });
+
+        it('adds the second node', async () => {
+          const actualNode2 = await instance.nodes(1);
+          assert.equal(actualNode2, node2);
+        });
+
+        it('sets the count', async () => {
+          const actualNodeCount = await instance.nodeCount();
+          assert.equal(2, actualNodeCount);
+        });
+      });
+      describe('called by someone else', async () => {
+        it('throws an exception', async () => {
+          try {
+            await instance.addNode(node1, { from: accounts[1] });
+          } catch (error) {
+            return;
+          }
+          assert.fail('it should throw an exception');
+        });
       });
     });
   });
