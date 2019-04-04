@@ -3,26 +3,26 @@ pragma solidity >=0.4.21 <0.6.0;
 contract NodesV2
 {
   address owner;
-  bool allowRegistration;
 
   // Nodes that have passed the last check
-  string[] public activeNodes;
+  Enode[] public activeNodes;
   // Nodes that have not passed any check or failed previous check
-  string[] public inactiveNodes;
+  Enode[] public inactiveNodes;
   // Nodes that have been registered but haven't passed any checks
-  string[] public pendingNodes;
+  Enode[] public pendingNodes;
 
+  struct Enode {
+    bytes  publicKey;
+    uint32 ip;
+    uint16 port;
+  }
 
-  mapping(string => uint) activeNodeIndex;
-  mapping(string => uint) pendingNodeIndex;
+  mapping(address => bool) registered;
+  mapping(address => bool) voted;
+  mapping(string => uint) votes;
 
   modifier onlyOwner() {
     require(msg.sender == owner);
-    _;
-  }
-
-  modifier registrationOpen() {
-    require(allowRegistration);
     _;
   }
 
@@ -30,100 +30,43 @@ contract NodesV2
   public
   {
     owner = msg.sender;
-    allowRegistration = false;
-  }
-
-  function activeNodeCount()
-  view
-  public
-  returns
-  (uint)
-  {
-    return activeNodes.length;
-  }
-
-  function pendingNodeCount()
-  view
-  public
-  returns
-  (uint)
-  {
-    return pendingNodes.length;
   }
 
   // Register a node and adds it to the pending nodes
-  function registerNode(string memory _node)
+  function registerNode(bytes memory publicKey, uint32 ip, uint16 port)
   public
-  registrationOpen
   {
-    require(pendingNodeIndex[_node] == 0);
-    require(activeNodeIndex[_node] == 0);
-    pendingNodeIndex[_node] = pendingNodes.length + 1;
+    require(msg.sender == publicKeyToAddress(publicKey));
+    //TODO: ensure that enodeID is the same as the address of the sender
+    Enode memory _node = Enode(publicKey, ip, port);
+    require(!registered[msg.sender]);
+    registered[msg.sender] = true;
     pendingNodes.push(_node);
   }
 
-  // Add an active node to bootstrap the system, only used by the owner
-  function addActiveNode(string memory _node)
-  public
-  onlyOwner
-  {
-    // We increment as 0 is the default value
-    activeNodeIndex[_node] = activeNodes.length + 1;
-    activeNodes.push(_node);
+  function pendingNodeCount() public view returns (uint) {
+    return pendingNodes.length;
   }
 
-  // Remove an active node from the list of nodes, only used by the owner
-  function deleteActiveNode(string memory _node)
+  /*function vote(string[] memory misbehavingNodes)
   public
-  onlyOwner
   {
-    uint index = activeNodeIndex[_node];
-
-    require(index != 0);
-    _deleteNode(activeNodes, index - 1);
-    activeNodeIndex[_node] = 0;
-  }
-
-  // Remove a pending node
-  function deletePendingNode(string memory _node)
-  public
-  onlyOwner
-  {
-    uint index = pendingNodeIndex[_node];
-
-    require(index != 0);
-    _deleteNode(pendingNodes, index - 1);
-    pendingNodeIndex[_node] = 0;
-  }
-
-  // Remove all nodes, only used by the owner
-  function deleteAll()
-  public
-  onlyOwner
-  {
-    for(uint i=0; i < activeNodes.length; i++) {
-      activeNodeIndex[activeNodes[i]] = 0;
+    string memory enode = enodeIndex[msg.sender];
+    // It needs to have registered
+    //require(enode != "");
+    // Only active nodes can vote
+    require(activeNodeIndex[enode] != 0);
+    // It does not have already voted
+    require(!voted[msg.sender]);
+    for(uint i=0; i < misbehavingNodes.length; i++) {
+      votes[misbehavingNodes[i]]++;
     }
-    delete activeNodes;
+  }*/
 
-    for(uint i=0; i < pendingNodes.length; i++) {
-      pendingNodeIndex[pendingNodes[i]] = 0;
-    }
-    delete pendingNodes;
-  }
-
-  function toggleRegistration(bool value)
-  public
-  onlyOwner
-  {
-    allowRegistration = value;
-  }
-
-  function _deleteNode(string[] storage nodes, uint index) internal {
-    require(index < nodes.length);
-    nodes[index] = nodes[nodes.length-1];
-    delete nodes[nodes.length-1];
-    nodes.length--;
+  function publicKeyToAddress (bytes memory publicKey) public view returns (address) {
+    bytes20 result =  bytes20 (uint160 (uint256 (keccak256 (publicKey))));
+    //require(msg.sender == address(result));
+    return address(result);
   }
 
   function () external payable {

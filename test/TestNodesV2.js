@@ -1,164 +1,69 @@
 const Nodes = artifacts.require('NodesV2');
 
-const node1 = 'enode://da61e9eff86a56633b635f887d8b91e0ff5236bbc05b8169834292e92afb92929dcf6efdbf373a37903da8fe0384d5a0a8247e83f1ce211aa429200b6d28c548@47.91.156.93:443';
-const node2 = 'enode://7de99e4cb1b3523bd26ca212369540646607c721ad4f3e5c821ed9148150ce6ce2e72631723002210fac1fd52dfa8bbdf3555e05379af79515e1179da37cc3db@35.188.19.210:443';
-const node3 = 'enode://ebefab39b69bbbe64d8cd86be765b3be356d8c4b24660f65d493143a0c44f38c85a257300178f7845592a1b0332811542e9a58281c835babdd7535babb64efc1@35.202.99.224:443';
+function ipToDecimal(dot) {
+  const d = dot.split('.');
+  return ((((((+d[0]) * 256) + (+d[1])) * 256) + (+d[2])) * 256) + (+d[3]);
+}
+
+/* function decimalToIp(num) {
+  let d = num % 256;
+  for (let i = 3; i > 0; i = i - 1) {
+    num = Math.floor(num / 256);
+    d = `${num % 256}.${d}`;
+  }
+  return d;
+} */
+
+const node1 = {
+  pk: '0xaf80b90d25145da28c583359beb47b21796b2fe1a23c1511e443e7a64dfdb27d7434c380f0aa4c500e220aa1a9d068514b1ff4d5019e624e7ba1efe82b340a59',
+  ip: ipToDecimal('47.91.156.93'),
+  port: 443,
+};
+
+const node2 = {
+  pk: '0xce7edc292d7b747fab2f23584bbafaffde5c8ff17cf689969614441e0527b90015ea9fee96aed6d9c0fc2fbe0bd1883dee223b3200246ff1e21976bdbc9a0fc8',
+  ip: ipToDecimal('35.188.19.210'),
+  port: 443,
+};
+
+/* const node3 = {
+  pk: '0xebefab39b69bbbe64d8cd86be765b3be356d8c4b
+  24660f65d493143a0c44f38c85a257300178f7845592a1b0332811542e9a58281c835babdd7535babb64efc1',
+  ip: ipToDecimal('35.202.99.224'),
+  port: 443
+}; */
 
 contract('Nodes', async (accounts) => {
   let instance;
   beforeEach(async () => {
-    instance = await Nodes.deployed();
-    await instance.deleteAll();
-    await instance.toggleRegistration(false);
-  });
-
-  describe('addActiveNode', async () => {
-    describe('called by the owner', async () => {
-      beforeEach(async () => {
-        await instance.addActiveNode(node1);
-        await instance.addActiveNode(node2);
-      });
-
-      it('adds the first node', async () => {
-        const actualNode1 = await instance.activeNodes(0);
-        assert.equal(actualNode1, node1);
-      });
-
-      it('adds the second node', async () => {
-        const actualNode2 = await instance.activeNodes(1);
-        assert.equal(actualNode2, node2);
-      });
-
-      it('sets the count', async () => {
-        const actualNodeCount = await instance.activeNodeCount();
-        assert.equal(2, actualNodeCount);
-      });
-    });
-    describe('called by someone else', async () => {
-      it('throws an exception', async () => {
-        try {
-          await instance.addActiveNode(node1, { from: accounts[1] });
-        } catch (error) {
-          return;
-        }
-        assert.fail('it should throw an exception');
-      });
-    });
+    instance = await Nodes.new();
   });
 
   describe('registerNode', async () => {
-    describe('registration is open', async () => {
-      beforeEach(async () => {
-        await instance.toggleRegistration(true);
-        await instance.registerNode(node1);
-        await instance.registerNode(node2, { from: accounts[1] });
-      });
-
-      it('adds the first node', async () => {
-        const actualNode1 = await instance.pendingNodes(0);
-        assert.equal(actualNode1, node1);
-      });
-
-      it('adds the second node', async () => {
-        const actualNode2 = await instance.pendingNodes(1);
-        assert.equal(actualNode2, node2);
-      });
-
-      it('sets the count', async () => {
-        const actualNodeCount = await instance.pendingNodeCount();
-        assert.equal(2, actualNodeCount);
-      });
-
-      describe('node is already in pending', async () => {
-        it('throws an exception', async () => {
-          try {
-            await instance.registerNode(node1);
-          } catch (error) {
-            return;
-          }
-          assert.fail('it should throw an exception');
-        });
-      });
-
-      describe('node is already in active', async () => {
-        it('throws an exception', async () => {
-          await instance.addActiveNode(node3);
-          try {
-            await instance.registerNode(node3);
-          } catch (error) {
-            return;
-          }
-          assert.fail('it should throw an exception');
-        });
-      });
-    });
-    describe('registration is closed', async () => {
-      it('throws an exception', async () => {
-        try {
-          await instance.registerNode(node1);
-        } catch (error) {
-          return;
-        }
-        assert.fail('it should throw an exception');
-      });
-    });
-  });
-
-  describe('deleteActiveNode', async () => {
-    describe('called by the owner', async () => {
-      beforeEach(async () => {
-        await instance.addActiveNode(node1);
-        await instance.addActiveNode(node2);
-        await instance.deleteActiveNode(node1);
-      });
-
-      it('removes the first node', async () => {
-        const actualNode2 = await instance.activeNodes(0);
-        assert.equal(actualNode2, node2);
-      });
-
-      it('sets the count', async () => {
-        const actualNodeCount = await instance.activeNodeCount();
-        assert.equal(1, actualNodeCount);
-      });
-    });
-    describe('called by someone else', async () => {
-      it('throws an exception', async () => {
-        try {
-          await instance.deleteActiveNode(node1, { from: accounts[1] });
-        } catch (error) {
-          return;
-        }
-        assert.fail('it should throw an exception');
-      });
-    });
-  });
-
-  describe('deleteAll', async () => {
     beforeEach(async () => {
-      await instance.addActiveNode(node1);
-      await instance.addActiveNode(node2);
-      await instance.deleteAll();
+      await instance.registerNode(node1.pk, node1.ip, node1.port);
+      await instance.registerNode(node2.pk, node2.ip, node2.port, { from: accounts[1] });
     });
 
-    it('empties the array', async () => {
-      try {
-        await instance.activeNodes(0);
-      } catch (error) {
-        return;
-      }
-      assert.fail('it should throw an exception');
+    it('adds the nodes', async () => {
+      const actualNodeCount = await instance.pendingNodeCount();
+      assert.equal(2, actualNodeCount);
     });
 
-    it('sets the count', async () => {
-      const actualNodeCount = await instance.activeNodeCount();
-      assert.equal(0, actualNodeCount);
-    });
-
-    describe('called by someone else', async () => {
+    describe('node is already in pending', async () => {
       it('throws an exception', async () => {
         try {
-          await instance.deleteAll({ from: accounts[1] });
+          await instance.registerNode(node1.pk, node1.ip, node1.port);
+        } catch (error) {
+          return;
+        }
+        assert.fail('it should throw an exception');
+      });
+    });
+    describe('node public key and sender do not match', async () => {
+      it('throws an exception', async () => {
+        try {
+          await instance.registerNode(node1.pk, node1.ip, node1.port, { from: accounts[1] });
         } catch (error) {
           return;
         }
