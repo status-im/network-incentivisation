@@ -27,7 +27,6 @@ contract NodesV2
     uint lastTimeHasBeenVoted;
   }
 
-  mapping(address => bool) registered;
   mapping(address => uint) activeNodeIndex;
   mapping(address => uint) inactiveNodeIndex;
 
@@ -44,6 +43,19 @@ contract NodesV2
     blockPeriod = _blockPeriod;
   }
 
+  function getNode(uint index) public view returns (bytes memory, uint32, uint16) {
+    Enode memory enode = activeNodes[index];
+
+    return (enode.publicKey, enode.ip, enode.port);
+  }
+
+  function getInactiveNode(uint index) public view returns (bytes memory, uint32, uint16) {
+    Enode memory enode = inactiveNodes[index];
+
+    return (enode.publicKey, enode.ip, enode.port);
+  }
+
+
   // Register a node and adds it to the pending nodes
   function registerNode(bytes memory publicKey, uint32 ip, uint16 port)
   public
@@ -51,10 +63,9 @@ contract NodesV2
     // Ensure it's registering their own node
     require(msg.sender == publicKeyToAddress(publicKey));
     // Make sure they haven't registered already
-    require(!registered[msg.sender]);
+    require(activeNodeIndex[msg.sender] == 0 && inactiveNodeIndex[msg.sender] == 0);
 
     Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0);
-    registered[msg.sender] = true;
     inactiveNodes.push(_node);
     inactiveNodeIndex[msg.sender] = inactiveNodes.length;
   }
@@ -67,11 +78,10 @@ contract NodesV2
     return inactiveNodes.length;
   }
 
-  // When a new block starts:
-  // - All pending nodes become inactive
   function performBlockPeriodOperation() internal {
     // Reset quorum for next vote
     quorum = calculateQuorum(activeNodes.length);
+    // Set current block
     currentBlock = block.number;
   }
 
@@ -114,9 +124,10 @@ contract NodesV2
     // Promote nodes that passed the vote
     for(uint i=0; i < joinNodes.length; i++) {
       address enodeAddress = joinNodes[i];
-      uint index = inactiveNodeIndex[joinNodes[i]];
+      uint index = inactiveNodeIndex[enodeAddress];
       if (index != 0) {
         Enode storage enode = inactiveNodes[index - 1];
+        require(enodeAddress == publicKeyToAddress(enode.publicKey));
         if (enode.lastTimeHasBeenVoted != currentBlock) {
           enode.lastTimeHasBeenVoted = currentBlock;
           enode.joinVotes = 1;
@@ -125,8 +136,9 @@ contract NodesV2
         }
 
         if (enode.joinVotes == quorum) {
+          Enode memory enodeCopy = inactiveNodes[index - 1];
           _deleteInactiveNode(index - 1);
-          _addActiveNode(enodeAddress, enode);
+          _addActiveNode(enodeAddress, enodeCopy);
         }
       }
     }
@@ -147,10 +159,9 @@ contract NodesV2
   {
     address enodeAddress = publicKeyToAddress(publicKey);
     // Make sure they haven't registered already
-    require(!registered[enodeAddress]);
+    require(activeNodeIndex[enodeAddress] == 0 && inactiveNodeIndex[enodeAddress] == 0);
 
     Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0);
-    registered[enodeAddress] = true;
 
     _addActiveNode(enodeAddress, _node);
 
@@ -177,23 +188,43 @@ contract NodesV2
 
   function _deleteInactiveNode(uint index) internal {
     require(index < inactiveNodes.length);
+    // Remove from index
+    Enode memory oldNode = inactiveNodes[index];
+    inactiveNodeIndex[publicKeyToAddress(oldNode.publicKey)] = 0;
+
+    // Copy last element to a previous cell
     inactiveNodes[index] = inactiveNodes[inactiveNodes.length-1];
-    delete inactiveNodes[inactiveNodes.length-1];
-    inactiveNodes.length--;
-    bytes memory publicKey = inactiveNodes[index].publicKey;
-    inactiveNodeIndex[publicKeyToAddress(publicKey)] = index + 1;
+
+    // Shorten array
+    inactiveNodes.pop();
+
+    // Delete last element if necessary
+    // Update the index
+    if (index != inactiveNodes.length) {
+      bytes memory publicKey = inactiveNodes[index].publicKey;
+      inactiveNodeIndex[publicKeyToAddress(publicKey)] = index + 1;
+    }
   }
 
   function _deleteActiveNode(uint index) internal {
     require(index < activeNodes.length);
+    // Remove from index
+    Enode memory oldNode = activeNodes[index];
+    activeNodeIndex[publicKeyToAddress(oldNode.publicKey)] = 0;
+
+    // Copy last element to a previous cell
     activeNodes[index] = activeNodes[activeNodes.length-1];
-    delete activeNodes[activeNodes.length-1];
-    activeNodes.length--;
-    bytes memory publicKey = activeNodes[index].publicKey;
-    activeNodeIndex[publicKeyToAddress(publicKey)] = index + 1;
+
+    // Shorten array
+    activeNodes.pop();
+
+    // Delete last element if necessary
+    // Update the index
+    if (index != activeNodes.length) {
+      bytes memory publicKey = activeNodes[index].publicKey;
+      activeNodeIndex[publicKeyToAddress(publicKey)] = index + 1;
+    }
   }
-
-
 
   function () external payable {
     require(msg.data.length == 0);
