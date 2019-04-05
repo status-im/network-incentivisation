@@ -12,6 +12,8 @@ module.exports = {
     describe: 'readonly',
     beforeEach: 'readonly',
     before: 'readonly',
+    web3: 'readonly',
+    xdescribe: 'readonly',
     afterEach: 'readonly',
     after: 'readonly',
     it: 'readonly',

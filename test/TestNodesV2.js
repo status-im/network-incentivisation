@@ -1,4 +1,7 @@
 const Nodes = artifacts.require('NodesV2');
+const helper = require('./helpers');
+
+const blockPeriod = 10;
 
 function ipToDecimal(dot) {
   const d = dot.split('.');
@@ -18,25 +21,41 @@ const node1 = {
   pk: '0xaf80b90d25145da28c583359beb47b21796b2fe1a23c1511e443e7a64dfdb27d7434c380f0aa4c500e220aa1a9d068514b1ff4d5019e624e7ba1efe82b340a59',
   ip: ipToDecimal('47.91.156.93'),
   port: 443,
+  address: '0x627306090abab3a6e1400e9345bc60c78a8bef57',
 };
 
 const node2 = {
   pk: '0xce7edc292d7b747fab2f23584bbafaffde5c8ff17cf689969614441e0527b90015ea9fee96aed6d9c0fc2fbe0bd1883dee223b3200246ff1e21976bdbc9a0fc8',
   ip: ipToDecimal('35.188.19.210'),
   port: 443,
+  address: '0xf17f52151ebef6c7334fad080c5704d77216b732',
 };
 
-/* const node3 = {
-  pk: '0xebefab39b69bbbe64d8cd86be765b3be356d8c4b
-  24660f65d493143a0c44f38c85a257300178f7845592a1b0332811542e9a58281c835babdd7535babb64efc1',
+const node3 = {
+  pk: '0x785a891f323acd6cef0fc509bb14304410595914267c50467e51c87142acbb5e12ab6cc10390ee6e31985e52e7d5701bed4c265dfc899cac07bc9c608ab02a74',
   ip: ipToDecimal('35.202.99.224'),
-  port: 443
-}; */
+  port: 443,
+  address: '0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef',
+};
+
+const node4 = {
+  pk: '0x396c2c8a22ec28dbe02613027edea9a3b0c314294985e09c2f389818b29fee066a8384bb217f7fc35134d0e778ad8681b2d922ed630f86bea161d27f97536a3e',
+  ip: ipToDecimal('35.202.99.224'),
+  port: 443,
+  address: '0x821aea9a577a9b44299b9c15c88cf3087f3b5544',
+};
+
+const node5 = {
+  pk: '0xe67ceb1f0af0ab4668227984782b48d286b88e54dc91487143199728d4597c02e080ed81eda0d36242b0dadbb56f9cad0bdcf42b6c51d6e839d47681e787d9bd',
+  ip: ipToDecimal('35.202.99.224'),
+  port: 443,
+  address: '0x0d1d4e623d10f9fba5db95830f7d3839406c6af2',
+};
 
 contract('Nodes', async (accounts) => {
   let instance;
   beforeEach(async () => {
-    instance = await Nodes.new();
+    instance = await Nodes.new(blockPeriod);
   });
 
   describe('registerNode', async () => {
@@ -46,11 +65,11 @@ contract('Nodes', async (accounts) => {
     });
 
     it('adds the nodes', async () => {
-      const actualNodeCount = await instance.pendingNodeCount();
+      const actualNodeCount = await instance.inactiveNodeCount();
       assert.equal(2, actualNodeCount);
     });
 
-    describe('node is already in pending', async () => {
+    describe('node is already in inactive', async () => {
       it('throws an exception', async () => {
         try {
           await instance.registerNode(node1.pk, node1.ip, node1.port);
@@ -68,6 +87,106 @@ contract('Nodes', async (accounts) => {
           return;
         }
         assert.fail('it should throw an exception');
+      });
+    });
+  });
+
+  describe('addActiveNode', async () => {
+    beforeEach(async () => {
+      await instance.addActiveNode(node1.pk, node1.ip, node1.port);
+    });
+
+    it('adds the nodes', async () => {
+      const actualNodeCount = await instance.activeNodeCount();
+      assert.equal(1, actualNodeCount);
+    });
+
+    describe('node is already in active', async () => {
+      it('throws an exception', async () => {
+        try {
+          await instance.addActiveNode(node1.pk, node1.ip, node1.port);
+        } catch (error) {
+          return;
+        }
+        assert.fail('it should throw an exception');
+      });
+    });
+    describe('not the owner', async () => {
+      it('throws an exception', async () => {
+        try {
+          await instance.addActiveNode(node1.pk, node1.ip, node1.port, { from: accounts[1] });
+        } catch (error) {
+          return;
+        }
+        assert.fail('it should throw an exception');
+      });
+    });
+  });
+
+  describe('vote', async () => {
+    describe('first round of voting', async () => {
+      // Node1, Node2 and Node3 are active, Node4 is inactive
+      beforeEach(async () => {
+        await instance.addActiveNode(node1.pk, node1.ip, node1.port);
+        await instance.addActiveNode(node2.pk, node2.ip, node2.port);
+        await instance.addActiveNode(node3.pk, node3.ip, node3.port);
+        await instance.registerNode(node4.pk, node4.ip, node4.port, { from: accounts[3] });
+        await instance.registerNode(node5.pk, node5.ip, node5.port, { from: accounts[4] });
+        // Last block period finished
+        await helper.advanceBlocks(blockPeriod);
+        await instance.vote([node4.address], [node2.address]);
+        await instance.vote([], [node1.address, node3.address], { from: accounts[1] });
+        await instance.vote([node4.address], [node2.address], { from: accounts[2] });
+      });
+
+      describe('double voting', async () => {
+        it('throws an exception', async () => {
+          try {
+            await instance.vote([node4.address], [node2.address]);
+          } catch (error) {
+            return;
+          }
+          assert.fail('it should throw an exception');
+        });
+      });
+
+      describe('voter is not active', async () => {
+        it('throws an exception', async () => {
+          try {
+            await instance.vote([node4.address], [node2.address], { from: accounts[4] });
+          } catch (error) {
+            return;
+          }
+          assert.fail('it should throw an exception');
+        });
+      });
+
+      xdescribe('voter is newly active', async () => {
+        it('throws an exception', async () => {
+          try {
+            await instance.vote([node4.address], [node2.address], { from: accounts[3] });
+          } catch (error) {
+            return;
+          }
+          assert.fail('it should throw an exception');
+        });
+      });
+
+      describe('second round of voting', async () => {
+        beforeEach(async () => {
+          await helper.advanceBlocks(blockPeriod);
+          // We vote to trigger changes
+          await instance.vote([], [node2.address]);
+        });
+
+        it('promotes the inactive nodes that have passed the checks', async () => {
+          const actualNodeCount = await instance.inactiveNodeCount();
+          assert.equal(1, actualNodeCount);
+        });
+        it('removes nodes that have failed the checks and promotes those that have passed them', async () => {
+          const actualNodeCount = await instance.activeNodeCount();
+          assert.equal(3, actualNodeCount);
+        });
       });
     });
   });
