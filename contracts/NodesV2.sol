@@ -70,6 +70,14 @@ contract NodesV2
     inactiveNodeIndex[msg.sender] = inactiveNodes.length;
   }
 
+  function registered(bytes memory publicKey)
+  public
+  view
+  returns (bool) {
+    address node = publicKeyToAddress(publicKey);
+    return !(activeNodeIndex[node] == 0 && inactiveNodeIndex[node] == 0);
+  }
+
  function activeNodeCount() public view returns (uint) {
     return activeNodes.length;
   }

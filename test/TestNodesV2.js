@@ -124,6 +124,22 @@ contract('Nodes', async (accounts) => {
     });
   });
 
+  describe('registered', async () => {
+    beforeEach(async () => {
+      await instance.registerNode(node1.pk, node1.ip, node1.port);
+    });
+
+    it('it returns true when node is registered', async () => {
+      const response = await instance.registered(node1.pk);
+      assert.equal(true, response);
+    });
+
+    it('it returns true when node is registered', async () => {
+      const response = await instance.registered(node2.pk);
+      assert.equal(false, response);
+    });
+  });
+
   describe('vote', async () => {
     describe('first round of voting', async () => {
       // Node1, Node2 and Node3 are active, Node4 is inactive
