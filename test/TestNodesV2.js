@@ -156,6 +156,13 @@ contract('Nodes', async (accounts) => {
         await instance.vote([node4.address, node5.address], [node2.address], { from: accounts[2] });
       });
 
+      describe('currentBlock', async () => {
+        it('returns 1', async () => {
+          const actualCurrentBlock = await instance.getCurrentBlock();
+          assert.equal(1, actualCurrentBlock);
+        });
+      });
+
       describe('double voting', async () => {
         it('throws an exception', async () => {
           try {
@@ -194,6 +201,13 @@ contract('Nodes', async (accounts) => {
           await helper.advanceBlocks(blockPeriod);
           // We vote to trigger changes
           await instance.vote([], [node2.address]);
+        });
+
+        describe('currentBlock', async () => {
+          it('returns 2', async () => {
+            const actualCurrentBlock = await instance.getCurrentBlock();
+            assert.equal(2, actualCurrentBlock);
+          });
         });
 
         it('promotes the inactive nodes that have passed the checks', async () => {

@@ -9,11 +9,11 @@ contract NodesV2
   // Nodes that have not passed any check or failed previous check
   Enode[] public inactiveNodes;
 
-  // For testing purposes
-  bool overrideBlockPeriod;
   uint quorum;
+  // How many blocks is a period
   uint blockPeriod;
-  uint currentBlock;
+  uint currentBlockStart;
+  uint public currentBlock;
 
   struct Enode {
     bytes  publicKey;
@@ -39,8 +39,17 @@ contract NodesV2
   public
   {
     owner = msg.sender;
-    currentBlock = block.number;
+    currentBlock = 0;
+    currentBlockStart = block.number;
     blockPeriod = _blockPeriod;
+  }
+
+  function getCurrentBlock() public view returns (uint) {
+    if (newBlockPeriod()) {
+      return currentBlock + 1;
+    } else {
+      return currentBlock;
+    }
   }
 
   function getNode(uint index) public view returns (bytes memory, uint32, uint16) {
@@ -90,7 +99,9 @@ contract NodesV2
     // Reset quorum for next vote
     quorum = calculateQuorum(activeNodes.length);
     // Set current block
-    currentBlock = block.number;
+    currentBlock++;
+    // Set start
+    currentBlockStart = block.number;
   }
 
   function vote(
@@ -153,7 +164,7 @@ contract NodesV2
   }
 
   function newBlockPeriod() private view returns (bool) {
-    return block.number >= currentBlock + blockPeriod;
+    return block.number >= currentBlockStart + blockPeriod;
   }
 
   function publicKeyToAddress (bytes memory publicKey) public pure returns (address) {
@@ -188,10 +199,6 @@ contract NodesV2
 
   function calculateQuorum(uint a) pure internal returns (uint ) {
     return a / 2 + 1;
-  }
-
-  function setOverrideBlockPeriod(bool val) public onlyOwner {
-    overrideBlockPeriod = val;
   }
 
   function _deleteInactiveNode(uint index) internal {
