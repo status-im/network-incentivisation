@@ -158,7 +158,7 @@ contract('Nodes', async (accounts) => {
 
       describe('currentBlock', async () => {
         it('returns 1', async () => {
-          const actualCurrentBlock = await instance.getCurrentBlock();
+          const actualCurrentBlock = await instance.getCurrentSession();
           assert.equal(1, actualCurrentBlock);
         });
       });
@@ -205,7 +205,7 @@ contract('Nodes', async (accounts) => {
 
         describe('currentBlock', async () => {
           it('returns 2', async () => {
-            const actualCurrentBlock = await instance.getCurrentBlock();
+            const actualCurrentBlock = await instance.getCurrentSession();
             assert.equal(2, actualCurrentBlock);
           });
         });

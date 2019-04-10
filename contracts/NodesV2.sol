@@ -10,10 +10,10 @@ contract NodesV2
   Enode[] public inactiveNodes;
 
   uint quorum;
-  // How many blocks is a period
-  uint blockPeriod;
-  uint currentBlockStart;
-  uint public currentBlock;
+  // How many blocks is a session
+  uint blockPerSession;
+  uint currentSessionStart;
+  uint public currentSession;
 
   struct Enode {
     bytes  publicKey;
@@ -35,20 +35,20 @@ contract NodesV2
     _;
   }
 
-  constructor(uint _blockPeriod)
+  constructor(uint _blockPerSession)
   public
   {
     owner = msg.sender;
-    currentBlock = 0;
-    currentBlockStart = block.number;
-    blockPeriod = _blockPeriod;
+    currentSession = 0;
+    currentSessionStart = block.number;
+    blockPerSession = _blockPerSession;
   }
 
-  function getCurrentBlock() public view returns (uint) {
-    if (newBlockPeriod()) {
-      return currentBlock + 1;
+  function getCurrentSession() public view returns (uint) {
+    if (newSession()) {
+      return currentSession + 1;
     } else {
-      return currentBlock;
+      return currentSession;
     }
   }
 
@@ -95,13 +95,13 @@ contract NodesV2
     return inactiveNodes.length;
   }
 
-  function performBlockPeriodOperation() internal {
+  function performSessionOperation() internal {
     // Reset quorum for next vote
     quorum = calculateQuorum(activeNodes.length);
-    // Set current block
-    currentBlock++;
+    // Set current session
+    currentSession++;
     // Set start
-    currentBlockStart = block.number;
+    currentSessionStart = block.number;
   }
 
   function vote(
@@ -110,8 +110,8 @@ contract NodesV2
   )
   public
   {
-    if (newBlockPeriod()) {
-      performBlockPeriodOperation();
+    if (newSession()) {
+      performSessionOperation();
     }
 
     // Make sure is an active node
@@ -119,16 +119,16 @@ contract NodesV2
     require(enodeIndex != 0);
 
     // Make sure it has not voted already
-    require(activeNodes[enodeIndex - 1].lastTimeHasVoted != currentBlock);
-    activeNodes[enodeIndex - 1].lastTimeHasVoted = currentBlock;
+    require(activeNodes[enodeIndex - 1].lastTimeHasVoted != currentSession);
+    activeNodes[enodeIndex - 1].lastTimeHasVoted = currentSession;
 
     // Remove nodes that failed the vote
     for(uint i=0; i < removeNodes.length; i++) {
       uint index = activeNodeIndex[removeNodes[i]];
       if (index != 0) {
         Enode storage enode = activeNodes[index - 1];
-        if (enode.lastTimeHasBeenVoted != currentBlock) {
-          enode.lastTimeHasBeenVoted = currentBlock;
+        if (enode.lastTimeHasBeenVoted != currentSession) {
+          enode.lastTimeHasBeenVoted = currentSession;
           enode.removeVotes = 1;
         } else {
             enode.removeVotes++;
@@ -147,8 +147,8 @@ contract NodesV2
       if (index != 0) {
         Enode storage enode = inactiveNodes[index - 1];
         require(enodeAddress == publicKeyToAddress(enode.publicKey));
-        if (enode.lastTimeHasBeenVoted != currentBlock) {
-          enode.lastTimeHasBeenVoted = currentBlock;
+        if (enode.lastTimeHasBeenVoted != currentSession) {
+          enode.lastTimeHasBeenVoted = currentSession;
           enode.joinVotes = 1;
         } else {
             enode.joinVotes++;
@@ -163,8 +163,8 @@ contract NodesV2
     }
   }
 
-  function newBlockPeriod() private view returns (bool) {
-    return block.number >= currentBlockStart + blockPeriod;
+  function newSession() private view returns (bool) {
+    return block.number >= currentSessionStart + blockPerSession;
   }
 
   function publicKeyToAddress (bytes memory publicKey) public pure returns (address) {
