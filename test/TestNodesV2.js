@@ -185,10 +185,10 @@ contract('Nodes', async (accounts) => {
         });
       });
 
-      xdescribe('voter is newly active', async () => {
+      describe('voter is newly active', async () => {
         it('throws an exception', async () => {
           try {
-            await instance.vote([node4.address], [node2.address], { from: accounts[3] });
+            await instance.vote([node4.address], [node2.address], { from: accounts[4] });
           } catch (error) {
             return;
           }
@@ -218,6 +218,7 @@ contract('Nodes', async (accounts) => {
           assert.equal(inactiveNode1[0], node4.pk);
           assert.equal(inactiveNode1[1], node4.ip);
           assert.equal(inactiveNode1[2], node4.port);
+          assert.equal(inactiveNode1[3], 0);
         });
 
         it('removes nodes that have failed the checks and promotes those that have passed them', async () => {
@@ -233,16 +234,22 @@ contract('Nodes', async (accounts) => {
               pk: actualNode1[0],
               ip: actualNode1[1],
               port: actualNode1[2],
+              joiningSession: actualNode1[3],
+              activeSession: actualNode1[4],
             },
             {
               pk: actualNode2[0],
               ip: actualNode2[1],
               port: actualNode2[2],
+              joiningSession: actualNode2[3],
+              activeSession: actualNode2[4],
             },
             {
               pk: actualNode3[0],
               ip: actualNode3[1],
               port: actualNode3[2],
+              joiningSession: actualNode3[3],
+              activeSession: actualNode3[4],
             },
           ];
 
@@ -251,15 +258,66 @@ contract('Nodes', async (accounts) => {
           assert.equal(actualNodes[0].pk, node3.pk);
           assert.equal(actualNodes[0].port, node3.port);
           assert.equal(actualNodes[0].ip, node3.ip);
+          assert.equal(actualNodes[0].joiningSession, 0);
+          assert.equal(actualNodes[0].activeSession, 0);
 
           assert.equal(actualNodes[1].pk, node1.pk);
           assert.equal(actualNodes[1].port, node1.port);
           assert.equal(actualNodes[1].ip, node1.ip);
-
+          assert.equal(actualNodes[1].joiningSession, 0);
+          assert.equal(actualNodes[1].activeSession, 0);
 
           assert.equal(actualNodes[2].pk, node5.pk);
           assert.equal(actualNodes[2].port, node5.port);
           assert.equal(actualNodes[2].ip, node5.ip);
+          assert.equal(actualNodes[2].joiningSession, 0);
+          assert.equal(actualNodes[2].activeSession, 1);
+        });
+
+        describe('a node removed re-register', async () => {
+          beforeEach(async () => {
+            await instance.registerNode(node2.pk, node2.ip, node2.port, { from: accounts[1] });
+          });
+
+          it('adds the node', async () => {
+            const actualNodeCount = await instance.inactiveNodeCount();
+            assert.equal(2, actualNodeCount);
+          });
+
+          it('adds the node', async () => {
+            const actualNode1 = await instance.getInactiveNode(0);
+            const actualNode2 = await instance.getInactiveNode(1);
+            const actualNodes = [
+              {
+                pk: actualNode1[0],
+                ip: actualNode1[1],
+                port: actualNode1[2],
+                joiningSession: actualNode1[3],
+                activeSession: actualNode1[4],
+              },
+              {
+                pk: actualNode2[0],
+                ip: actualNode2[1],
+                port: actualNode2[2],
+                joiningSession: actualNode2[3],
+                activeSession: actualNode2[4],
+              },
+            ];
+
+            actualNodes.sort(compareNodes);
+
+            assert.equal(actualNodes[0].pk, node4.pk);
+            assert.equal(actualNodes[0].port, node4.port);
+            assert.equal(actualNodes[0].ip, node4.ip);
+            assert.equal(actualNodes[0].joiningSession, 0);
+            assert.equal(actualNodes[0].activeSession, 0);
+
+            assert.equal(actualNodes[1].pk, node2.pk);
+            assert.equal(actualNodes[1].port, node2.port);
+            assert.equal(actualNodes[1].ip, node2.ip);
+            assert.equal(actualNodes[1].joiningSession, 2);
+            assert.equal(actualNodes[1].activeSession, 0);
+          });
         });
       });
     });

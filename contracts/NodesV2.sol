@@ -9,11 +9,12 @@ contract NodesV2
   // Nodes that have not passed any check or failed previous check
   Enode[] public inactiveNodes;
 
-  uint quorum;
+  uint16 quorum;
+  uint16 maxNodes = 6000;
   // How many blocks is a session
-  uint blockPerSession;
+  uint16 blockPerSession;
   uint currentSessionStart;
-  uint public currentSession;
+  uint32 public currentSession;
 
   struct Enode {
     bytes  publicKey;
@@ -25,6 +26,10 @@ contract NodesV2
     uint lastTimeHasVoted;
     // For which voting round are the votes referring to
     uint lastTimeHasBeenVoted;
+    // Session when the node joine
+    uint32 joiningSession;
+    // Session when became active
+    uint32 activeSession;
   }
 
   mapping(address => uint) activeNodeIndex;
@@ -35,7 +40,7 @@ contract NodesV2
     _;
   }
 
-  constructor(uint _blockPerSession)
+  constructor(uint16 _blockPerSession)
   public
   {
     owner = msg.sender;
@@ -52,16 +57,16 @@ contract NodesV2
     }
   }
 
-  function getNode(uint index) public view returns (bytes memory, uint32, uint16) {
+  function getNode(uint index) public view returns (bytes memory, uint32, uint16, uint32, uint32) {
     Enode memory enode = activeNodes[index];
 
-    return (enode.publicKey, enode.ip, enode.port);
+    return (enode.publicKey, enode.ip, enode.port, enode.joiningSession, enode.activeSession);
   }
 
-  function getInactiveNode(uint index) public view returns (bytes memory, uint32, uint16) {
+  function getInactiveNode(uint index) public view returns (bytes memory, uint32, uint16, uint32, uint32) {
     Enode memory enode = inactiveNodes[index];
 
-    return (enode.publicKey, enode.ip, enode.port);
+    return (enode.publicKey, enode.ip, enode.port, enode.joiningSession, enode.activeSession);
   }
 
 
@@ -73,8 +78,10 @@ contract NodesV2
     require(msg.sender == publicKeyToAddress(publicKey));
     // Make sure they haven't registered already
     require(activeNodeIndex[msg.sender] == 0 && inactiveNodeIndex[msg.sender] == 0);
+    // Make sure we don't hit the max nodes limit
+    require(activeNodes.length + inactiveNodes.length < maxNodes);
 
-    Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0);
+    Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0, currentSession, 0);
     inactiveNodes.push(_node);
     inactiveNodeIndex[msg.sender] = inactiveNodes.length;
   }
@@ -120,6 +127,10 @@ contract NodesV2
 
     // Make sure it has not voted already
     require(activeNodes[enodeIndex - 1].lastTimeHasVoted != currentSession);
+
+    // Make sure it has not just became active, we allow 0 to ease bootstrapping
+    require(activeNodes[enodeIndex - 1].activeSession == 0 && activeNodes[enodeIndex - 1].activeSession != currentSession);
+
     activeNodes[enodeIndex - 1].lastTimeHasVoted = currentSession;
 
     // Remove nodes that failed the vote
@@ -156,6 +167,7 @@ contract NodesV2
 
         if (enode.joinVotes == quorum) {
           Enode memory enodeCopy = inactiveNodes[index - 1];
+          enodeCopy.activeSession = currentSession;
           _deleteInactiveNode(index - 1);
           _addActiveNode(enodeAddress, enodeCopy);
         }
@@ -179,8 +191,10 @@ contract NodesV2
     address enodeAddress = publicKeyToAddress(publicKey);
     // Make sure they haven't registered already
     require(activeNodeIndex[enodeAddress] == 0 && inactiveNodeIndex[enodeAddress] == 0);
+    // Make sure we don't hit the max nodes limit
+    require(activeNodes.length + inactiveNodes.length < maxNodes);
 
-    Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0);
+    Enode memory _node = Enode(publicKey, ip, port, 0, 0, 0, 0, currentSession, currentSession);
 
     _addActiveNode(enodeAddress, _node);
 
@@ -197,8 +211,8 @@ contract NodesV2
   }
 
 
-  function calculateQuorum(uint a) pure internal returns (uint ) {
-    return a / 2 + 1;
+  function calculateQuorum(uint a) pure internal returns (uint16) {
+    return uint16(a) / 2 + 1;
   }
 
   function _deleteInactiveNode(uint index) internal {
