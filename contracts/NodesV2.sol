@@ -129,7 +129,7 @@ contract NodesV2
     require(activeNodes[enodeIndex - 1].lastTimeHasVoted != currentSession);
 
     // Make sure it has not just became active, we allow 0 to ease bootstrapping
-    require(activeNodes[enodeIndex - 1].activeSession == 0 && activeNodes[enodeIndex - 1].activeSession != currentSession);
+    require(activeNodes[enodeIndex - 1].activeSession == 0 || activeNodes[enodeIndex - 1].activeSession != currentSession);
 
     activeNodes[enodeIndex - 1].lastTimeHasVoted = currentSession;
 

@@ -319,6 +319,14 @@ contract('Nodes', async (accounts) => {
             assert.equal(actualNodes[1].activeSession, 0);
           });
         });
+        describe('third round of voting', async () => {
+          beforeEach(async () => {
+            await helper.advanceBlocks(blockPeriod);
+          });
+          it('allows a new node to vote', async () => {
+            await instance.vote([node4.address], [node2.address], { from: accounts[4] });
+          });
+        });
       });
     });
   });
