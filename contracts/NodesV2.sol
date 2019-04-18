@@ -102,6 +102,10 @@ contract NodesV2
     return inactiveNodes.length;
   }
 
+  function overrideSession() onlyOwner public{
+    performSessionOperation();
+  }
+
   function performSessionOperation() internal {
     // Reset quorum for next vote
     quorum = calculateQuorum(activeNodes.length);
