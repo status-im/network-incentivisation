@@ -13,7 +13,11 @@ contract NodesV2
   uint16 maxNodes = 6000;
   // How many blocks is a session
   uint16 blockPerSession;
+  // How many blocks per subscription period
+  uint24 blockPerSubscription = 192960;
   uint currentSessionStart;
+  // How much to send to user at each voting
+  uint currentReward;
   uint32 public currentSession;
 
   struct Enode {
@@ -113,6 +117,8 @@ contract NodesV2
     currentSession++;
     // Set start
     currentSessionStart = block.number;
+    // Set reward
+    currentReward = calculateReward();
   }
 
   function vote(
@@ -177,6 +183,9 @@ contract NodesV2
         }
       }
     }
+
+    msg.sender.transfer(currentReward);
+
   }
 
   function newSession() private view returns (bool) {
@@ -218,6 +227,11 @@ contract NodesV2
   function calculateQuorum(uint a) pure internal returns (uint16) {
     return uint16(a) / 2 + 1;
   }
+
+  function calculateReward() view internal returns (uint) {
+    return address(this).balance / (blockPerSubscription / blockPerSession) / activeNodes.length;
+  }
+
 
   function _deleteInactiveNode(uint index) internal {
     require(index < inactiveNodes.length);
